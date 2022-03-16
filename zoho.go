@@ -35,6 +35,32 @@ func New() *Zoho {
 	return &z
 }
 
+func NewWithLogger(l retryablehttp.LeveledLogger) *Zoho {
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = 1
+	retryClient.HTTPClient = &http.Client{
+		Timeout: time.Second * 10,
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout: 5 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 5 * time.Second,
+		},
+	}
+	retryClient.Logger = l
+
+	z := Zoho{
+		client:     retryClient.StandardClient(),
+		ZohoTLD:    "com",
+		tokensFile: "./.tokens.zoho",
+		oauth: OAuth{
+			baseURL: "https://accounts.zoho.com/oauth/v2/",
+		},
+	}
+
+	return &z
+}
+
 // SetTokenManager can be used to provide a type which implements the TokenManager interface
 // which will get/set AccessTokens/RenewTokens using a persistence mechanism
 func (z *Zoho) SetTokenManager(tm TokenLoaderSaver) {
